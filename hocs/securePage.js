@@ -1,24 +1,43 @@
-import React from 'react'
-import PropTypes from 'prop-types'
+import React from "react";
+import PropTypes from "prop-types";
+import NoSSR from "react-no-ssr";
 
-import NotAuthorized from '../components/NotAuthorized'
-import defaultPage from './defaultPage'
+import { tryReauth } from "../utils/lock";
+import NotAuthorized from "../components/NotAuthorized";
+import defaultPage from "./defaultPage";
 
-const securePageHoc = Page => class SecurePage extends React.Component {
-
-  static propTypes = {
-    isAuthenticated: PropTypes.bool.isRequired
+class Reauthenticate extends React.Component {
+  componentDidMount() {
+    tryReauth();
   }
-
-  static getInitialProps (ctx) {
-    return Page.getInitialProps && Page.getInitialProps(ctx)
+  render() {
+    return null;
   }
-
-  render () {
-    const { isAuthenticated } = this.props
-    return isAuthenticated ? <Page {...this.props} /> : <NotAuthorized />
-  }
-  
 }
 
-export default Page => defaultPage(securePageHoc(Page))
+const securePageHoc = Page =>
+  class SecurePage extends React.Component {
+    static propTypes = {
+      isAuthenticated: PropTypes.bool.isRequired
+    };
+
+    static getInitialProps(ctx) {
+      return Page.getInitialProps && Page.getInitialProps(ctx);
+    }
+
+    render() {
+      const { isAuthenticated } = this.props;
+      return isAuthenticated ? (
+        <Page {...this.props} />
+      ) : (
+        <React.Fragment>
+          <NotAuthorized />
+          <NoSSR>
+            <Reauthenticate />
+          </NoSSR>
+        </React.Fragment>
+      );
+    }
+  };
+
+export default Page => defaultPage(securePageHoc(Page));
