@@ -3,12 +3,15 @@ import PropTypes from "prop-types";
 import NoSSR from "react-no-ssr";
 
 import { tryReauth } from "../utils/lock";
+import { canAuthenticate } from "../utils/auth";
 import NotAuthorized from "../components/NotAuthorized";
 import defaultPage from "./defaultPage";
 
 class Reauthenticate extends React.Component {
   componentDidMount() {
-    tryReauth();
+    if (canAuthenticate()) {
+      tryReauth();
+    }
   }
   render() {
     return null;

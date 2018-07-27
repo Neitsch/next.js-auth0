@@ -2,24 +2,40 @@ import jwtDecode from "jwt-decode";
 import Cookie from "js-cookie";
 import Router from "next/router";
 
-export const setToken = token => {
+const authKey = "isAuthenticated";
+const userKey = "user";
+const jwtKey = "jwt";
+
+export const setToken = (token, expirationDate) => {
   if (!process.browser) {
     return;
   }
-  Cookie.set("user", jwtDecode(token));
-  Cookie.set("jwt", token);
+  Cookie.set(authKey, "yes", { expires: 9999 });
+  Cookie.set(userKey, jwtDecode(token), { expires: expirationDate });
+  Cookie.set(jwtKey, token, { expires: expirationDate });
 };
 
 export const unsetToken = () => {
   if (!process.browser) {
     return;
   }
-  Cookie.remove("jwt");
-  Cookie.remove("user");
-  Cookie.remove("secret");
+  Cookie.remove(jwtKey);
+  Cookie.remove(userKey);
+  Cookie.remove(authKey);
+};
 
-  // to support logging out from all windows
-  window.localStorage.setItem("logout", Date.now());
+export const canAuthenticate = () => {
+  if (!process.browser) {
+    return false;
+  }
+  return !!Cookie.get(authKey);
+};
+
+export const cannotAuthenticate = () => {
+  if (!process.browser) {
+    return;
+  }
+  Cookie.remove(authKey);
 };
 
 export const getUserFromServerCookie = req => {
@@ -39,12 +55,8 @@ export const getUserFromServerCookie = req => {
 export const getUserFromLocalCookie = () => {
   return Cookie.getJSON("user");
 };
-
-export const setSecret = secret => Cookie.set("secret", secret);
-
-export const checkSecret = secret => Cookie.get("secret") === secret;
-
-export const authenticated = (token, redirect = "/") => {
-  setToken(token);
+export const authenticated = (token, expiresIn, redirect = "/") => {
+  const expirationDate = new Date(new Date().getTime() + expiresIn * 1000);
+  setToken(token, expirationDate);
   Router.push(redirect);
 };

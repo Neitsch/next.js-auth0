@@ -1,7 +1,8 @@
-import { setSecret } from "./auth";
-import { authenticated } from "./auth";
+import { authenticated, cannotAuthenticate } from "./auth";
 
 import uuid from "uuid";
+
+const responseType = "token id_token";
 
 const getLock = options => {
   const config = require("../config.json");
@@ -16,17 +17,15 @@ const getLock = options => {
 const getBaseUrl = () => `${window.location.protocol}//${window.location.host}`;
 
 const getOptions = container => {
-  const secret = uuid.v4();
-  setSecret(secret);
   return {
     container,
     closable: false,
     auth: {
-      responseType: "token id_token",
+      responseType,
       redirectUrl: `${getBaseUrl()}/auth/signed-in`,
       params: {
         scope: "openid profile email",
-        state: secret
+        state: uuid.v4()
       }
     }
   };
@@ -35,22 +34,32 @@ const getOptions = container => {
 export const show = container => {
   const lock = getLock(getOptions(container));
   lock.on("authenticated", function(authResult) {
-    authenticated(authResult.idToken);
+    authenticated(authResult.idToken, authResult.expiresIn);
   });
   return lock.show();
 };
 export const logout = () => getLock().logout({ returnTo: getBaseUrl() });
 export const finishAuthFlow = () =>
   getLock().resumeAuth(window.location.hash, function(error, authResult) {
-    authenticated(authResult.idToken);
+    authenticated(authResult.idToken, authResult.expiresIn);
   });
 export const tryReauth = () => {
   const lock = getLock();
-  lock.checkSession({}, function(error, authResult) {
-    if (error) {
-      return;
+  lock.checkSession(
+    {
+      responseType
+    },
+    function(error, authResult) {
+      if (error) {
+        console.error(error);
+        cannotAuthenticate();
+        return;
+      }
+      authenticated(
+        authResult.idToken,
+        authResult.expiresIn,
+        window.location.pathname
+      );
     }
-    // Why is the idToken null?
-    authenticated(authResult.idToken, window.location.pathname);
-  });
+  );
 };
